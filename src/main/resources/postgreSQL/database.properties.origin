@@ -1,0 +1,5 @@
+# (Data Source)
+database.driver_class=
+database.connection.url=
+database.connection.username=
+database.connection.password=
