@@ -37,7 +37,32 @@ public class ClientDAO implements Dao<Client> {
                 if (resultSet.next()) {
                     int clientId = resultSet.getInt("client_id");
                     String name = resultSet.getString("name");
-                    Client client = new Client(name);
+
+                    Client client = new Client();
+                    client.setName(name);
+                    client.setId(clientId);
+
+                    return Optional.of(client);
+                }
+            }
+        } catch (SQLException | ClassNotFoundException e) {
+            e.printStackTrace();
+        }
+        return Optional.empty();
+    }
+
+    public Optional<Client> getByName(String clientName) {
+        String sql = "SELECT * FROM Client WHERE name = ?";
+        try (Connection connection = getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            preparedStatement.setString(1, clientName);
+            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                if (resultSet.next()) {
+                    int clientId = resultSet.getInt("client_id");
+                    String name = resultSet.getString("name");
+
+                    Client client = new Client();
+                    client.setName(name);
                     client.setId(clientId);
 
                     return Optional.of(client);
@@ -72,6 +97,10 @@ public class ClientDAO implements Dao<Client> {
 
     @Override
     public void save(Client client) {
+        if (clientExists(client.getName())) {
+            System.out.println("Client with name '" + client.getName() + "' already exists.");
+            return;
+        }
         String sql = "INSERT INTO Client (name) VALUES (?)";
         try (Connection connection = getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -91,6 +120,23 @@ public class ClientDAO implements Dao<Client> {
         } catch (SQLException | ClassNotFoundException e) {
             e.printStackTrace();
         }
+    }
+
+    public boolean clientExists(String name) {
+        String sql = "SELECT COUNT(*) FROM Client WHERE name = ?";
+        try (Connection connection = getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            preparedStatement.setString(1, name);
+            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                if (resultSet.next()) {
+                    int count = resultSet.getInt(1);
+                    return count > 0;
+                }
+            }
+        } catch (SQLException | ClassNotFoundException e) {
+            e.printStackTrace();
+        }
+        return false;
     }
 
     @Override

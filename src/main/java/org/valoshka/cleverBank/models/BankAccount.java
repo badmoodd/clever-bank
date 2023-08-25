@@ -10,9 +10,9 @@ import java.util.Currency;
 @NoArgsConstructor
 public class BankAccount {
 
-    public BankAccount(String accountNumber, Bank bank, Currency currency) {
+    public BankAccount(String accountNumber, String bankName, Currency currency) {
         this.accountNumber = accountNumber;
-        this.bank = bank;
+        this.bankName = bankName;
         this.createdAt = LocalDate.now();
         this.balance = 0;
         this.currency = currency;
@@ -25,7 +25,7 @@ public class BankAccount {
 
     @Getter
     @Setter
-    private Bank bank;
+    private String bankName;
 
     @Getter
     @Setter
