@@ -37,14 +37,14 @@ public class Main {
 ////        BankAccount m = bankAccount.orElse(new BankAccount());
 ////        System.out.println();
         BankAccount bankAccount =
-                new BankAccount("BA12 JKDG 5600 2132 ASDA 903A 2132", "Belinvestbank", currency);
-        Client client = new Client("Bасильков Егор Дмитриевич");
+                new BankAccount("CA12 JKDG 5600 2132 ASDA 903A 2132", "Priorbank", currency);
+        Client client = new Client("Сидорович Глеб Анатольевич");
         client.addAccount(bankAccount);
         clientDAO.save(client);
         BankAccountDAO bankAccountDAO = new BankAccountDAO();
         bankAccountDAO.save(bankAccount);
-        bankAccountDAO.deleteById("BA12 JKDG 5600 2132 ASDA 903A 2132");
-        clientDAO.save(client);
+//        bankAccountDAO.deleteByName("BA12 JKDG 5600 2132 ASDA 903A 2132");
+//        clientDAO.save(client);
 
 
 
