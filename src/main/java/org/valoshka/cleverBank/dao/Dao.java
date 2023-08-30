@@ -5,7 +5,7 @@ import java.util.Optional;
 
 public interface Dao<T> {
 
-    Optional<T> get(int id);
+    Optional<T> get(String name);
 
     List<T> getAll();
 
@@ -13,5 +13,5 @@ public interface Dao<T> {
 
     void update(T t, String[] params);
 
-    void deleteById(int id);
+    void deleteByName(String name);
 }

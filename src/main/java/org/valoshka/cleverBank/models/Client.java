@@ -27,6 +27,7 @@ public class Client {
     @NonNull
     private String name;
 
+    @Getter
     private List<BankAccount> accountsList;
 
 }

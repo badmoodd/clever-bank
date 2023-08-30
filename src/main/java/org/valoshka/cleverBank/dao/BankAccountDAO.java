@@ -1,5 +1,6 @@
 package org.valoshka.cleverBank.dao;
 
+import org.valoshka.cleverBank.dao.utils.DatabaseUtils;
 import org.valoshka.cleverBank.models.BankAccount;
 import org.valoshka.cleverBank.models.Client;
 
@@ -12,7 +13,7 @@ import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.*;
 
-public class BankAccountDAO {
+public class BankAccountDAO implements Dao<BankAccount> {
 
     private static final Properties properties = new Properties();
 
@@ -29,6 +30,7 @@ public class BankAccountDAO {
         return ConnectionManager.getConnection(properties);
     }
 
+    @Override
     public Optional<BankAccount> get(String accountNumber) {
         String sql = "SELECT ba.*, c.name as client_name FROM BankAccount ba " +
                 "INNER JOIN Client c ON ba.owner_id = c.client_id " +
@@ -38,30 +40,7 @@ public class BankAccountDAO {
             preparedStatement.setString(1, accountNumber);
             try (ResultSet resultSet = preparedStatement.executeQuery()) {
                 if (resultSet.next()) {
-                    String bankAccountNumber = resultSet.getString("account_number");
-                    String bankName = resultSet.getString("bank_name");
-                    LocalDate createdAt = resultSet.getDate("created_At").toLocalDate();
-                    double balance = resultSet.getDouble("balance");
-                    Currency currency = Currency.getInstance(resultSet.getString("currency"));
-                    String clientName = resultSet.getString("client_name");
-
-                    Client owner = new Client();
-                    owner.setName(clientName);
-                    int ownerId = resultSet.getInt("owner_id");
-                    owner.setId(ownerId);
-
-                    BankAccount bankAccount = new BankAccount();
-                    bankAccount.setAccountNumber(bankAccountNumber);
-                    bankAccount.setBankName(bankName);
-                    bankAccount.setCreatedAt(createdAt);
-                    bankAccount.setBalance(balance);
-                    bankAccount.setCurrency(currency);
-
-                    bankAccount.setOwner(owner);
-                    owner.addAccount(bankAccount);
-
-
-                    return Optional.of(bankAccount);
+                    return Optional.of(createBankAccountFromResultSet(resultSet));
                 }
             }
         } catch (SQLException | ClassNotFoundException e) {
@@ -70,6 +49,7 @@ public class BankAccountDAO {
         return Optional.empty();
     }
 
+    @Override
     public List<BankAccount> getAll() {
         List<BankAccount> bankAccounts = new ArrayList<>();
         String sql = "SELECT ba.*, c.name as client_name FROM BankAccount ba " +
@@ -79,29 +59,7 @@ public class BankAccountDAO {
              ResultSet resultSet = preparedStatement.executeQuery()) {
 
             while (resultSet.next()) {
-                String bankAccountNumber = resultSet.getString("account_number");
-                String bankName = resultSet.getString("bank_name");
-                LocalDate createdAt = resultSet.getDate("created_At").toLocalDate();
-                double balance = resultSet.getDouble("balance");
-                Currency currency = Currency.getInstance(resultSet.getString("currency"));
-                String clientName = resultSet.getString("client_name");
-                int ownerId = resultSet.getInt("owner_id");
-
-                Client owner = new Client();
-                owner.setName(clientName);
-                owner.setId(ownerId);
-
-                BankAccount bankAccount = new BankAccount();
-                bankAccount.setAccountNumber(bankAccountNumber);
-                bankAccount.setBankName(bankName);
-                bankAccount.setCreatedAt(createdAt);
-                bankAccount.setBalance(balance);
-                bankAccount.setCurrency(currency);
-
-                bankAccount.setOwner(owner);
-                owner.addAccount(bankAccount);
-
-                bankAccounts.add(bankAccount);
+                bankAccounts.add(createBankAccountFromResultSet(resultSet));
             }
 
         } catch (SQLException | ClassNotFoundException e) {
@@ -110,6 +68,33 @@ public class BankAccountDAO {
         return bankAccounts;
     }
 
+    private BankAccount createBankAccountFromResultSet(ResultSet resultSet) throws SQLException {
+        String bankAccountNumber = resultSet.getString("account_number");
+        String bankName = resultSet.getString("bank_name");
+        LocalDate createdAt = resultSet.getDate("created_At").toLocalDate();
+        double balance = resultSet.getDouble("balance");
+        Currency currency = Currency.getInstance(resultSet.getString("currency"));
+        String clientName = resultSet.getString("client_name");
+        int ownerId = resultSet.getInt("owner_id");
+
+        Client owner = new Client();
+        owner.setName(clientName);
+        owner.setId(ownerId);
+
+        BankAccount bankAccount = new BankAccount();
+        bankAccount.setAccountNumber(bankAccountNumber);
+        bankAccount.setBankName(bankName);
+        bankAccount.setCreatedAt(createdAt);
+        bankAccount.setBalance(balance);
+        bankAccount.setCurrency(currency);
+
+        bankAccount.setOwner(owner);
+        owner.addAccount(bankAccount);
+
+        return bankAccount;
+    }
+
+    @Override
     public void save(BankAccount bankAccount) {
         ClientDAO clientDAO = new ClientDAO();
 
@@ -120,9 +105,8 @@ public class BankAccountDAO {
 
         String clientName = bankAccount.getOwner().getName();
         if (clientDAO.clientExists(clientName)) {
-            bankAccount.setOwner(clientDAO.getByName(clientName).orElseThrow()); //sql запрос
+            bankAccount.setOwner(clientDAO.get(clientName).orElseThrow()); //sql запрос
         }
-
 
         String sql = "INSERT INTO BankAccount (account_number, bank_name, created_at, balance, currency, owner_id) " +
                 "VALUES (?, ?, ?, ?, ?, ?)";
@@ -145,67 +129,23 @@ public class BankAccountDAO {
     }
 
     public boolean accountExists(String accountNumber) {
-        String sql = "SELECT COUNT(*) FROM bankaccount WHERE account_number = ?";
-        try (Connection connection = getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-            preparedStatement.setString(1, accountNumber);
-            try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                if (resultSet.next()) {
-                    int count = resultSet.getInt(1);
-                    return count > 0;
-                }
-            }
-        } catch (SQLException | ClassNotFoundException e) {
+        try (Connection connection = getConnection()) {
+            return DatabaseUtils.recordExists(connection, "bankaccount", "account_number", accountNumber);
+        } catch (ClassNotFoundException | SQLException e) {
             e.printStackTrace();
+            return false;
         }
-        return false;
     }
 
+    @Override
     public void update(BankAccount bankAccount, String[] params) {
-        StringBuilder sqlBuilder = new StringBuilder("UPDATE BankAccount SET ");
-        List<Object> values = new ArrayList<>();
 
-        for (int i = 0; i < params.length; i++) {
-            String param = params[i];
-            switch (param) {
-                case "accountNumber" -> {
-                    sqlBuilder.append("account_number = ?");
-                    values.add(bankAccount.getAccountNumber());
-                }
-                case "bankName" -> {
-                    sqlBuilder.append("bank_name = ?");
-                    values.add(bankAccount.getBankName());
-                }
-                case "createdAt" -> {
-                    sqlBuilder.append("created_at = ?");
-                    values.add(Date.parse(String.valueOf(bankAccount.getCreatedAt())));
-                }
-                case "balance" -> {
-                    sqlBuilder.append("balance = ?");
-                    values.add(bankAccount.getBalance());
-                }
-                case "currency" -> {
-                    sqlBuilder.append("currency = ?");
-                    values.add(bankAccount.getCurrency().getCurrencyCode());
-                }
-                // Добавьте обработку других полей по аналогии
-            }
-
-            if (i < params.length - 1) {
-                sqlBuilder.append(", ");
-            }
-        }
-
-        sqlBuilder.append(" WHERE account_number = ?");
-        values.add(bankAccount.getAccountNumber());
-
-        String sql = sqlBuilder.toString();
+        String sql = "UPDATE bankaccount SET balance=? WHERE account_number=?";
 
         try (Connection connection = getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-            for (int i = 0; i < values.size(); i++) {
-                preparedStatement.setObject(i + 1, values.get(i));
-            }
+            preparedStatement.setDouble(1, Double.parseDouble(params[0]));
+            preparedStatement.setString(2, bankAccount.getAccountNumber());
 
             int affectedRows = preparedStatement.executeUpdate();
             if (affectedRows == 0) {
@@ -216,7 +156,8 @@ public class BankAccountDAO {
         }
     }
 
-    public void deleteById(String accountNumber) {
+    @Override
+    public void deleteByName(String accountNumber) {
         String sql = "DELETE FROM BankAccount WHERE account_number = ?";
         try (Connection connection = getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
