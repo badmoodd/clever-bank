@@ -24,9 +24,9 @@ public class Transaction {
         this.currency = currency;
     }
 
-    public static boolean deposit(String targetAccountNumber, double amount) {
+    public static boolean depositAndWithdrawal(String targetAccountNumber, double amount, TransactionType transactionType) {
         if (amount < 0) {
-            System.out.println("Your amount should bbe more than Zero");
+            System.out.println("Your amount should be more than Zero");
             return false;
         }
 
@@ -38,15 +38,23 @@ public class Transaction {
             synchronized (targetAccount) {
                 try {
                     double currentBalance = targetAccount.getBalance();
-                    double newBalance = currentBalance + amount;
+                    double newBalance = (transactionType == TransactionType.DEPOSIT)
+                            ? currentBalance + amount
+                            : currentBalance - amount;
+
+                    if (newBalance < 0 && transactionType == TransactionType.WITHDRAWAL) {
+                        System.out.println("Insufficient funds");
+                        return false;
+                    }
+
                     targetAccount.setBalance(newBalance);
 
-                    // firstly update account
-                    // we are working with target account balance!
+                    // Firstly update account
+                    // We are working with target account balance!
                     bankAccountDAO.update(targetAccount, new String[]{String.valueOf(targetAccount.getBalance())});
 
                     Transaction transaction = new Transaction(
-                            TransactionType.DEPOSIT,
+                            transactionType,
                             targetAccount,
                             targetAccount,
                             amount,
@@ -64,7 +72,69 @@ public class Transaction {
                 }
             }
         } else {
-            System.out.println("Account don't exist");
+            System.out.println("Account doesn't exist");
+            return false;
+        }
+    }
+
+    public static boolean transfer(String sourceAccountNumber, String targetAccountNumber, double amount) {
+        if (amount < 0) {
+            System.out.println("Your amount should be more than Zero");
+            return false;
+        }
+
+        BankAccountDAO bankAccountDAO = new BankAccountDAO();
+        TransactionDAO transactionDAO = new TransactionDAO();
+        Optional<BankAccount> optionalSourceAccount = bankAccountDAO.get(sourceAccountNumber);
+        Optional<BankAccount> optionalTargetAccount = bankAccountDAO.get(targetAccountNumber);
+
+        if (optionalSourceAccount.isPresent() && optionalTargetAccount.isPresent()) {
+            BankAccount sourceAccount = optionalSourceAccount.get();
+            BankAccount targetAccount = optionalTargetAccount.get();
+            synchronized (targetAccount) {
+                try {
+                    double newBalanceSourceAccount = sourceAccount.getBalance() - amount;
+                    double newBalanceTargetAccount = targetAccount.getBalance() + amount;
+
+                    if (newBalanceSourceAccount < 0) {
+                        System.out.println("Insufficient funds");
+                        Transaction transaction = new Transaction(
+                                TransactionType.TRANSFER,
+                                sourceAccount,
+                                targetAccount,
+                                amount,
+                                targetAccount.getCurrency());
+                        transaction.setTransactionStatus(TransactionStatus.FAILED);
+                        transactionDAO.save(transaction);
+                        return false;
+                    }
+
+                    sourceAccount.setBalance(newBalanceSourceAccount);
+                    targetAccount.setBalance(newBalanceTargetAccount);
+
+                    // Firstly update account
+                    // We are working with target account balance!
+                    bankAccountDAO.update(sourceAccount, new String[]{String.valueOf(sourceAccount.getBalance())});
+                    bankAccountDAO.update(targetAccount, new String[]{String.valueOf(targetAccount.getBalance())});
+
+                    Transaction transaction = new Transaction(
+                            TransactionType.TRANSFER,
+                            sourceAccount,
+                            targetAccount,
+                            amount,
+                            targetAccount.getCurrency());
+                    transaction.setTransactionStatus(TransactionStatus.COMPLETED);
+                    transactionDAO.save(transaction);
+
+                    Thread.sleep(100);
+                    return true;
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                    return false;
+                }
+            }
+        } else {
+            System.out.println("Account doesn't exist");
             return false;
         }
     }
