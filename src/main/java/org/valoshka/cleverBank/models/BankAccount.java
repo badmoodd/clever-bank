@@ -7,9 +7,19 @@ import lombok.Setter;
 import java.time.LocalDate;
 import java.util.Currency;
 
+/**
+ * Represents a bank account in the banking system.
+ */
 @NoArgsConstructor
 public class BankAccount {
 
+    /**
+     * Initializes a new bank account with the specified account number, bank name, and currency.
+     *
+     * @param accountNumber The account number of the bank account.
+     * @param bankName      The name of the bank associated with the account.
+     * @param currency      The currency of the account.
+     */
     public BankAccount(String accountNumber, String bankName, Currency currency) {
         this.accountNumber = accountNumber;
         this.bankName = bankName;

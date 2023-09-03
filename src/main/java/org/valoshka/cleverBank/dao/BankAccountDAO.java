@@ -13,10 +13,16 @@ import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.*;
 
+/**
+ * Data Access Object (DAO) for managing bank account data in the database.
+ */
 public class BankAccountDAO implements Dao<BankAccount> {
 
     private static final Properties properties = new Properties();
 
+    /**
+     * Constructs a new BankAccountDAO and loads database properties.
+     */
     public BankAccountDAO() {
         try (InputStream inputStream = ClientDAO.class.getClassLoader().getResourceAsStream("postgreSQL/database.properties")) {
             properties.load(inputStream);
@@ -26,10 +32,23 @@ public class BankAccountDAO implements Dao<BankAccount> {
         }
     }
 
+    /**
+     * Gets a database connection using the properties loaded during construction.
+     *
+     * @return A database connection.
+     * @throws SQLException           If a database access error occurs.
+     * @throws ClassNotFoundException If the database driver class is not found.
+     */
     public Connection getConnection() throws SQLException, ClassNotFoundException {
         return ConnectionManager.getConnection(properties);
     }
 
+    /**
+     * Retrieves a bank account from the database by account number.
+     *
+     * @param accountNumber The account number of the bank account to retrieve.
+     * @return An Optional containing the retrieved bank account if found, or an empty Optional if not found.
+     */
     @Override
     public Optional<BankAccount> get(String accountNumber) {
         String sql = "SELECT ba.*, c.name as client_name FROM BankAccount ba " +
@@ -49,6 +68,11 @@ public class BankAccountDAO implements Dao<BankAccount> {
         return Optional.empty();
     }
 
+    /**
+     * Retrieves all bank accounts from the database.
+     *
+     * @return A list of all bank accounts in the database.
+     */
     @Override
     public List<BankAccount> getAll() {
         List<BankAccount> bankAccounts = new ArrayList<>();
@@ -67,6 +91,7 @@ public class BankAccountDAO implements Dao<BankAccount> {
         }
         return bankAccounts;
     }
+
 
     private BankAccount createBankAccountFromResultSet(ResultSet resultSet) throws SQLException {
         String bankAccountNumber = resultSet.getString("account_number");
@@ -94,6 +119,11 @@ public class BankAccountDAO implements Dao<BankAccount> {
         return bankAccount;
     }
 
+    /**
+     * Saves a bank account to the database.
+     *
+     * @param bankAccount The bank account to save.
+     */
     @Override
     public void save(BankAccount bankAccount) {
         ClientDAO clientDAO = new ClientDAO();
@@ -128,6 +158,12 @@ public class BankAccountDAO implements Dao<BankAccount> {
         }
     }
 
+    /**
+     * Checks if a bank account with the given account number already exists in the database.
+     *
+     * @param accountNumber The account number to check.
+     * @return True if a bank account with the given account number exists, false otherwise.
+     */
     public boolean accountExists(String accountNumber) {
         try (Connection connection = getConnection()) {
             return DatabaseUtils.recordExists(connection, "bankaccount", "account_number", accountNumber);
@@ -137,6 +173,12 @@ public class BankAccountDAO implements Dao<BankAccount> {
         }
     }
 
+    /**
+     * Updates a bank account's balance in the database.
+     *
+     * @param bankAccount The bank account to update.
+     * @param params      An array of parameters for the update operation.
+     */
     @Override
     public void update(BankAccount bankAccount, String[] params) {
 
@@ -156,6 +198,11 @@ public class BankAccountDAO implements Dao<BankAccount> {
         }
     }
 
+    /**
+     * Deletes a bank account from the database by account number.
+     *
+     * @param accountNumber The account number of the bank account to delete.
+     */
     @Override
     public void deleteByName(String accountNumber) {
         String sql = "DELETE FROM BankAccount WHERE account_number = ?";
