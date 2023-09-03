@@ -23,12 +23,11 @@ public class TransactionDAO {
         return ConnectionManager.getConnection(properties);
     }
 
-    public void save(Transaction transaction) {
-
+    public int save(Transaction transaction) {
         String sql = "INSERT INTO Transaction (trans_date_time, trans_type, trans_status, source_account, target_account, amount, currency) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?)";
         try (Connection connection = getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+             PreparedStatement preparedStatement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             preparedStatement.setTimestamp(1, Timestamp.valueOf(transaction.getDateTimeOfTransaction()));
             preparedStatement.setObject(2, transaction.getTransactionType(), Types.OTHER);
             preparedStatement.setObject(3, transaction.getTransactionStatus(), Types.OTHER);
@@ -37,9 +36,27 @@ public class TransactionDAO {
             preparedStatement.setDouble(6, transaction.getAmount());
             preparedStatement.setString(7, transaction.getCurrency().getCurrencyCode());
 
-            preparedStatement.executeUpdate();
+            int rowsAffected = preparedStatement.executeUpdate();
+            if (rowsAffected == 0) {
+                throw new SQLException("Creating transaction failed, no rows affected.");
+            }
+
+            try (ResultSet generatedKeys = preparedStatement.getGeneratedKeys()) {
+                if (generatedKeys.next()) {
+                    return generatedKeys.getInt(1);
+                } else {
+                    throw new SQLException("Creating transaction failed, no ID obtained.");
+                }
+            }
         } catch (SQLException | ClassNotFoundException e) {
             e.printStackTrace();
+            return -1;
         }
     }
+
+
+
+
+
+
 }

@@ -2,44 +2,57 @@ package org.valoshka.cleverBank.statements;
 
 
 import de.vandermeer.asciitable.AsciiTable;
+import de.vandermeer.asciitable.AsciiTableException;
 import de.vandermeer.asciithemes.TA_GridThemes;
-import de.vandermeer.skb.interfaces.transformers.textformat.TextAlignment;
+import org.valoshka.cleverBank.enums.TransactionType;
 import org.valoshka.cleverBank.models.Transaction;
 
+import java.io.FileWriter;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
 public class BankStatement {
-    public static void main(String[] args) {
-        AsciiTable at = new AsciiTable();
+    // How to get the generated id of transaction? Using date and time! It's unique! I'm genius
 
-
-        at.addRule();
-        at.addRow("Чек:", "номер чека");
-        at.addRule();
-        at.addRow("дата:", "время");
-        at.addRule();
-        at.addRow("Тип транзакции:", "перевод");
-        at.addRule();
-        at.addRow("Банк отправителя:", "Clever-bank");
-        at.addRule();
-        at.addRow("Банк получателя:", "Clever-bank");
-        at.addRule();
-        at.addRow("Счёт отправителя:", "QA12 JKDG 5600 2132 ASDA 903A 2132");
-        at.addRule();
-        at.addRow("Счёт получателя:", "QA12 JKDG 5600 2132 ASDA 903A 2132");
-        at.addRule();
-        at.addRow("Сумма:", "200 BYN");
-        at.addRule();
-
-        at.getContext().setWidth(74);
-
-        at.getContext().setGridTheme(TA_GridThemes.OUTSIDE);
-        System.out.println(at.render());
+    public static void saveTransactionCheck(Transaction transaction) {
+        String checkTemplate;
+        checkTemplate = createCheckTemplate(transaction);
+        saveCheck(checkTemplate, transaction.getId());
     }
 
-    // How to get the generated id of transaction? Using date and time! It's uniq! I'm genius
-    public static boolean createDepositWithdrawalCheck(Transaction transaction) {
-        try {
-            String name = "Банковский чек\n";
+    private static void saveCheck(String templateCheck, int checkId) {
+        String folderPath = "checks";
 
+        Path folder = Paths.get(folderPath);
+
+        if (!folder.toFile().exists()) {
+            boolean created = folder.toFile().mkdirs();
+            if (created) {
+                System.out.println("Folder created: " + folderPath);
+            } else {
+                System.err.println("Failed to create folder: " + folderPath);
+            }
+        }
+
+        String fileName = String.format("check_%d.txt", checkId);
+
+        String filePath = Paths.get(folderPath, fileName).toString();
+
+        try (FileWriter writer = new FileWriter(filePath)) {
+            writer.write(templateCheck);
+            System.out.println("Check saved to: " + filePath);
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.err.println("Error saving check.");
+        }
+    }
+
+    private static String createCheckTemplate(Transaction transaction) {
+        String name = String.format("%44s", "Банковский чек\n");
+        String overallCheck;
+
+        try {
             AsciiTable at = new AsciiTable();
 
             at.addRule();
@@ -49,9 +62,14 @@ public class BankStatement {
             at.addRule();
             at.addRow("Тип транзакции:", transaction.getTransactionType());
             at.addRule();
-            at.addRow("Банк:", "Clever-bank");
+
+            if (transaction.getTransactionType() == TransactionType.TRANSFER) {
+                addSourceAccountInfoToTable(at, transaction);
+            }
+
+            at.addRow("Банк получателя:", transaction.getTargetAccount().getBankName());
             at.addRule();
-            at.addRow("Номер счета:", transaction.getTargetAccount().getAccountNumber());
+            at.addRow("Счёт получателя:", transaction.getSourceAccount().getAccountNumber());
             at.addRule();
             at.addRow("Сумма:", transaction.getAmount() + " " + transaction.getCurrency().getSymbol());
             at.addRule();
@@ -59,13 +77,21 @@ public class BankStatement {
             at.getContext().setWidth(74);
             at.getContext().setGridTheme(TA_GridThemes.OUTSIDE);
 
-            String overallCheck = name + at.render();
-            System.out.println(overallCheck);
-        } catch (Exception e) {
+            overallCheck = name + at.render();
+
+        } catch (NullPointerException | AsciiTableException e) {
             e.printStackTrace();
-            return false;
+            return "Can't create check template";
         }
 
-        return true;
+        return overallCheck;
     }
+
+    private static void addSourceAccountInfoToTable(AsciiTable at, Transaction transaction) {
+        at.addRow("Банк отправителя:", transaction.getSourceAccount().getBankName());
+        at.addRule();
+        at.addRow("Банк отправителя:", transaction.getSourceAccount().getBankName());
+        at.addRule();
+    }
+
 }

@@ -7,6 +7,7 @@ import org.valoshka.cleverBank.dao.BankAccountDAO;
 import org.valoshka.cleverBank.dao.TransactionDAO;
 import org.valoshka.cleverBank.enums.TransactionStatus;
 import org.valoshka.cleverBank.enums.TransactionType;
+import org.valoshka.cleverBank.statements.BankStatement;
 
 import java.time.LocalDateTime;
 import java.util.Currency;
@@ -83,6 +84,7 @@ public class Transaction {
             return false;
         }
 
+        int transactionId;
         BankAccountDAO bankAccountDAO = new BankAccountDAO();
         TransactionDAO transactionDAO = new TransactionDAO();
         Optional<BankAccount> optionalSourceAccount = bankAccountDAO.get(sourceAccountNumber);
@@ -105,7 +107,12 @@ public class Transaction {
                                 amount,
                                 targetAccount.getCurrency());
                         transaction.setTransactionStatus(TransactionStatus.FAILED);
-                        transactionDAO.save(transaction);
+
+                        transactionId = transactionDAO.save(transaction);
+                        transaction.setId(transactionId);
+
+                        //save transaction check to folder
+                        BankStatement.saveTransactionCheck(transaction);
                         return false;
                     }
 
@@ -124,7 +131,12 @@ public class Transaction {
                             amount,
                             targetAccount.getCurrency());
                     transaction.setTransactionStatus(TransactionStatus.COMPLETED);
-                    transactionDAO.save(transaction);
+
+                    transactionId = transactionDAO.save(transaction);
+                    transaction.setId(transactionId);
+
+                    //save transaction check to folder
+                    BankStatement.saveTransactionCheck(transaction);
 
                     Thread.sleep(100);
                     return true;
