@@ -7,9 +7,15 @@ import java.io.InputStream;
 import java.sql.*;
 import java.util.Properties;
 
+/**
+ * Data Access Object (DAO) for managing transactions in the database.
+ */
 public class TransactionDAO {
     private static final Properties properties = new Properties();
 
+    /**
+     * Constructs a new TransactionDAO and loads database properties from a configuration file.
+     */
     public TransactionDAO() {
         try (InputStream inputStream = ClientDAO.class.getClassLoader().getResourceAsStream("postgreSQL/database.properties")) {
             properties.load(inputStream);
@@ -19,10 +25,23 @@ public class TransactionDAO {
         }
     }
 
+    /**
+     * Gets a database connection using the loaded properties.
+     *
+     * @return A database connection.
+     * @throws SQLException           If a database access error occurs.
+     * @throws ClassNotFoundException If the database driver class is not found.
+     */
     public Connection getConnection() throws SQLException, ClassNotFoundException {
         return ConnectionManager.getConnection(properties);
     }
 
+    /**
+     * Saves a transaction record in the database and returns the generated transaction ID.
+     *
+     * @param transaction The Transaction object to be saved.
+     * @return The generated transaction ID, or -1 if the save operation failed.
+     */
     public int save(Transaction transaction) {
         String sql = "INSERT INTO Transaction (trans_date_time, trans_type, trans_status, source_account, target_account, amount, currency) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?)";

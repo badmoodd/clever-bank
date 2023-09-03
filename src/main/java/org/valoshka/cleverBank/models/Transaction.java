@@ -13,9 +13,22 @@ import java.time.LocalDateTime;
 import java.util.Currency;
 import java.util.Optional;
 
+/**
+ * Represents a financial transaction in the banking system.
+ * This class provides methods for deposit, withdrawal, and transfers between accounts.
+ */
 @NoArgsConstructor
 public class Transaction {
 
+    /**
+     * Creates a new transaction with the specified details.
+     *
+     * @param transactionType  The type of the transaction (e.g., DEPOSIT, WITHDRAWAL, TRANSFER).
+     * @param sourceAccount    The source bank account for the transaction.
+     * @param targetAccount    The target bank account for the transaction.
+     * @param amount           The amount of money involved in the transaction.
+     * @param currency         The currency used for the transaction.
+     */
     public Transaction(TransactionType transactionType, BankAccount sourceAccount, BankAccount targetAccount, double amount, Currency currency) {
         this.dateTimeOfTransaction = LocalDateTime.now();
         this.transactionType = transactionType;
@@ -25,6 +38,14 @@ public class Transaction {
         this.currency = currency;
     }
 
+    /**
+     * Performs a deposit or withdrawal transaction for the specified target account.
+     *
+     * @param targetAccountNumber The account number of the target account.
+     * @param amount              The amount of money to deposit or withdraw.
+     * @param transactionType     The type of the transaction (DEPOSIT or WITHDRAWAL).
+     * @return True if the transaction is successful, false otherwise.
+     */
     public static boolean depositAndWithdrawal(String targetAccountNumber, double amount, TransactionType transactionType) {
         if (amount < 0) {
             System.out.println("Your amount should be more than Zero");
@@ -63,7 +84,11 @@ public class Transaction {
                     transaction.setTransactionStatus(TransactionStatus.COMPLETED);
 
                     TransactionDAO transactionDAO = new TransactionDAO();
-                    transactionDAO.save(transaction);
+                    int transactionId = transactionDAO.save(transaction);
+                    transaction.setId(transactionId);
+
+                    //save transaction check to folder
+                    BankStatement.saveTransactionCheck(transaction);
 
                     Thread.sleep(100);
                     return true;
@@ -78,6 +103,14 @@ public class Transaction {
         }
     }
 
+    /**
+     * Performs a transfer transaction between two bank accounts.
+     *
+     * @param sourceAccountNumber The account number of the source account.
+     * @param targetAccountNumber The account number of the target account.
+     * @param amount              The amount of money to transfer.
+     * @return True if the transaction is successful, false otherwise.
+     */
     public static boolean transfer(String sourceAccountNumber, String targetAccountNumber, double amount) {
         if (amount < 0) {
             System.out.println("Your amount should be more than Zero");
